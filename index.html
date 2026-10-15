@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cheerio Growth Coach – Clickable Prototype</title>
+<style>
+  :root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --success: #10b981;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: block; }
+  /* Top bar */
+  .topbar {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .logo { font-weight: 700; font-size: 20px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+  .logo span { background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .user-menu { display: flex; align-items: center; gap: 16px; font-size: 14px; color: var(--muted); }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #c7d2fe; display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--primary-dark); }
+  /* Layout */
+  .layout { display: flex; min-height: calc(100vh - 57px); }
+  .sidebar {
+    width: 220px;
+    background: white;
+    border-right: 1px solid var(--border);
+    padding: 20px 12px;
+    flex-shrink: 0;
+  }
+  .nav-item {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--muted);
+    cursor: pointer;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .nav-item.active, .nav-item:hover { background: #eef2ff; color: var(--primary); font-weight: 500; }
+  .main { flex: 1; padding: 28px 32px; max-width: 1100px; }
+  h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+  /* Cards */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .stat-card .label { font-size: 13px; color: var(--muted); }
+  .stat-card .value { font-size: 26px; font-weight: 700; margin-top: 4px; }
+  .stat-card .change { font-size: 12px; color: var(--success); margin-top: 4px; }
+  /* Coach card */
+  .coach-card {
+    background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
+    border: 1px solid #c7d2fe;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .coach-card::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%);
+  }
+  .coach-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+  }
+  .coach-card h2 { font-size: 18px; margin-bottom: 8px; }
+  .coach-card p { color: var(--muted); font-size: 14px; margin-bottom: 18px; max-width: 520px; }
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #f1f5f9; }
+  .btn-success { background: var(--success); color: white; }
+  /* Journey builder */
+  .journey-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .nodes { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 32px; }
+  .node {
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    width: 240px;
+    padding: 16px;
+    position: relative;
+  }
+  .node.active { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+  .node-num {
+    position: absolute;
+    top: -12px; left: 16px;
+    background: var(--primary);
+    color: white;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .node h3 { font-size: 14px; margin: 8px 0 6px; }
+  .node p { font-size: 12px; color: var(--muted); }
+  .node .channel { font-size: 11px; color: var(--primary); font-weight: 600; margin-top: 8px; }
+  .arrow { font-size: 24px; color: #cbd5e1; align-self: center; }
+  .edit-panel {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .edit-panel label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .edit-panel textarea, .edit-panel input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    margin-bottom: 16px;
+  }
+  .edit-panel textarea { min-height: 90px; resize: vertical; }
+  /* Success */
+  .success-box {
+    text-align: center;
+    padding: 60px 20px;
+    max-width: 520px;
+    margin: 40px auto;
+  }
+  .success-icon {
+    width: 72px; height: 72px;
+    background: #d1fae5;
+    color: var(--success);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+    margin: 0 auto 20px;
+  }
+  .success-box h2 { font-size: 22px; margin-bottom: 8px; }
+  .success-box p { color: var(--muted); margin-bottom: 28px; }
+  /* Login */
+  .login-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #eef2ff, #faf5ff);
+  }
+  .login-card {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+  }
+  .login-card h1 { text-align: center; margin-bottom: 8px; }
+  .login-card .sub { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+  .login-card input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 14px;
+    font-size: 14px;
+  }
+  .login-card .btn { width: 100%; padding: 12px; }
+  /* Progress indicator */
+  .progress {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .progress-step {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+  .progress-step.done { background: var(--primary); }
+  /* Floating coach (for dashboard) */
+  .floating-tip {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    width: 280px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    font-size: 13px;
+    z-index: 100;
+  }
+  .floating-tip strong { display: block; margin-bottom: 4px; }
+  .nav-hint { font-size: 12px; color: var(--muted); margin-top: 20px; text-align: center; }
+  .clickable { cursor: pointer; }
+  .clickable:hover { opacity: 0.9; }
+</style>
+</head>
+<body>
+
+<!-- ========== SCREEN 0: LOGIN ========== -->
+<div id="screen-login" class="screen active">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="logo" style="justify-content:center;margin-bottom:20px;">
+        <span>C</span> Cheerio
+      </div>
+      <h1>Welcome back</h1>
+      <p class="sub">Sign in to your D2C growth workspace</p>
+      <input type="email" placeholder="you@yourbrand.com" value="founder@glownaturals.com">
+      <input type="password" placeholder="Password" value="••••••••">
+      <button class="btn btn-primary" onclick="goTo('dashboard')">Log in</button>
+      <p class="nav-hint">Demo account pre-filled • Click Log in to continue</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SCREEN 1: DASHBOARD + COACH ========== -->
+<div id="screen-dashboard" class="screen">
+  <div class="topbar">
+    <div class="logo"><span>C</span> Cheerio</div>
+    <div class="user-menu">
+      <span>Glow Naturals</span>
+      <div class="avatar">GN</div>
+    </div>
+  </div>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="nav-item active">📊 Dashboard</div>
+      <div class="nav-item">📢 Campaigns</div>
+      <div class="nav-item">⚡ Automations</div>
+      <div class="nav-item">🤖 Chatbots</div>
+      <div class="nav-item">👥 Contacts / CRM</div>
+      <div class="nav-item">📈 Analytics</div>
+      <div class="nav-item">⚙️ Settings</div>
+    </div>
+    <div class="main">
+      <h1>Dashboard</h1>
+      <p class="subtitle">Last 30 days overview • Glow Naturals</p>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="label">Messages Sent</div>
+          <div class="value">12.4k</div>
+          <div class="change">↑ 8% vs last month</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Open Rate</div>
+          <div class="value">41%</div>
+          <div class="change">↑ 3 pts</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Active Contacts</div>
+          <div class="value">8,920</div>
+          <div class="change">+412 this month</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Revenue Attributed</div>
+          <div class="value">₹2.1L</div>
+          <div class="change">↑ 12%</div>
+        </div>
+      </div>
+
+      <!-- THE GROWTH COACH CARD -->
+      <div class="coach-card">
+        <div class="coach-badge">✨ Growth Coach</div>
+        <h2>You have 1,842 contacts who abandoned cart in the last 30 days</h2>
+        <p>Similar D2C brands recover 18–27% of these carts with a simple 3-step WhatsApp journey. I can set it up for you in under 2 minutes.</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="goTo('setup')">Set it up for me →</button>
+          <button class="btn btn-secondary" onclick="alert('Dismissed for now. Coach will reappear in 7 days or when you open Analytics.')">Maybe later</button>
+        </div>
+      </div>
+
+      <h3 style="margin-bottom:12px;font-size:16px;">Recent Campaigns</h3>
+      <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:16px;font-size:14px;color:var(--muted);">
+        You have sent 4 broadcast campaigns this month. No live automations yet.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SCREEN 2: SETUP JOURNEY ========== -->
+<div id="screen-setup" class="screen">
+  <div class="topbar">
+    <div class="logo"><span>C</span> Cheerio</div>
+    <div class="user-menu">
+      <span>Glow Naturals</span>
+      <div class="avatar">GN</div>
+    </div>
+  </div>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="nav-item">📊 Dashboard</div>
+      <div class="nav-item">📢 Campaigns</div>
+      <div class="nav-item active">⚡ Automations</div>
+      <div class="nav-item">🤖 Chatbots</div>
+      <div class="nav-item">👥 Contacts / CRM</div>
+      <div class="nav-item">📈 Analytics</div>
+      <div class="nav-item">⚙️ Settings</div>
+    </div>
+    <div class="main">
+      <div class="progress">
+        <div class="progress-step done"></div>
+        <div class="progress-step done"></div>
+        <div class="progress-step"></div>
+      </div>
+      <div class="journey-header">
+        <div>
+          <h1>Abandoned Cart Recovery</h1>
+          <p class="subtitle">Pre-filled template based on top-performing D2C brands</p>
+        </div>
+        <button class="btn btn-primary" onclick="goTo('success')">Activate Journey</button>
+      </div>
+
+      <div class="nodes">
+        <div class="node active">
+          <div class="node-num">1</div>
+          <div class="channel">WhatsApp • 1 hour after abandon</div>
+          <h3>Gentle reminder</h3>
+          <p>"Hey {{name}}, you left something behind 👀 Your cart is waiting!"</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node">
+          <div class="node-num">2</div>
+          <div class="channel">WhatsApp • +24 hours</div>
+          <h3>Social proof + offer</h3>
+          <p>"Still thinking? 2,400+ customers love this. Here's 10% off to help decide."</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node">
+          <div class="node-num">3</div>
+          <div class="channel">WhatsApp • +48 hours</div>
+          <h3>Last chance</h3>
+          <p>"Last chance! Your 10% off expires tonight. Complete order →"</p>
+        </div>
+      </div>
+
+      <div class="edit-panel">
+        <label>Edit Message 1 (or keep the recommended copy)</label>
+        <textarea id="msg1">Hey {{name}}, you left something special behind 👀
+
+Your cart is still waiting for you. Ready to complete your order?
+
+Tap below to finish checkout in 1 click.</textarea>
+        <label>Discount code (optional)</label>
+        <input type="text" value="COMEBACK10" style="max-width:220px;">
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="alert('Message updated locally for demo')">Save changes</button>
+          <button class="btn btn-primary" onclick="goTo('success')">Looks good – Activate →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SCREEN 3: SUCCESS ========== -->
+<div id="screen-success" class="screen">
+  <div class="topbar">
+    <div class="logo"><span>C</span> Cheerio</div>
+    <div class="user-menu">
+      <span>Glow Naturals</span>
+      <div class="avatar">GN</div>
+    </div>
+  </div>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="nav-item">📊 Dashboard</div>
+      <div class="nav-item">📢 Campaigns</div>
+      <div class="nav-item active">⚡ Automations</div>
+      <div class="nav-item">🤖 Chatbots</div>
+      <div class="nav-item">👥 Contacts / CRM</div>
+      <div class="nav-item">📈 Analytics</div>
+      <div class="nav-item">⚙️ Settings</div>
+    </div>
+    <div class="main">
+      <div class="success-box">
+        <div class="success-icon">✓</div>
+        <h2>Journey is live!</h2>
+        <p>Your Abandoned Cart Recovery automation is now running. It will start messaging eligible contacts within the next hour.</p>
+        <div class="btn-row" style="justify-content:center;">
+          <button class="btn btn-primary" onclick="goTo('next-feature')">Next: Build a product recommender chatbot →</button>
+          <button class="btn btn-secondary" onclick="goTo('dashboard')">Back to Dashboard</button>
+        </div>
+        <p style="margin-top:28px;font-size:13px;color:var(--muted);">
+          Growth Coach will check back in 7 days with your recovery rate and suggest the next high-ROI feature.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SCREEN 4: NEXT FEATURE TEASE ========== -->
+<div id="screen-next-feature" class="screen">
+  <div class="topbar">
+    <div class="logo"><span>C</span> Cheerio</div>
+    <div class="user-menu">
+      <span>Glow Naturals</span>
+      <div class="avatar">GN</div>
+    </div>
+  </div>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="nav-item">📊 Dashboard</div>
+      <div class="nav-item">📢 Campaigns</div>
+      <div class="nav-item">⚡ Automations</div>
+      <div class="nav-item active">🤖 Chatbots</div>
+      <div class="nav-item">👥 Contacts / CRM</div>
+      <div class="nav-item">📈 Analytics</div>
+      <div class="nav-item">⚙️ Settings</div>
+    </div>
+    <div class="main">
+      <div class="coach-card">
+        <div class="coach-badge">✨ Growth Coach</div>
+        <h2>Great progress! Ready for the next unlock?</h2>
+        <p>A Product Recommender chatbot answers “What should I buy?” in WhatsApp using your catalog + past purchase data. Brands using it see 14–22% higher AOV on assisted chats.</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="alert('In full product this would open the chatbot template builder. For this prototype the core journey is complete.')">Set up recommender chatbot</button>
+          <button class="btn btn-secondary" onclick="goTo('dashboard')">Maybe later</button>
+        </div>
+      </div>
+      <p class="nav-hint">End of prototype journey • You can restart from the login screen</p>
+      <button class="btn btn-secondary" style="margin-top:12px;" onclick="goTo('login')">Restart prototype</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function goTo(screen) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + screen).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+</script>
+</body>
+</html>
